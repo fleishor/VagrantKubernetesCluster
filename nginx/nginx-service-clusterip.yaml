@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service-clusterip
+  labels:
+    app: nginx-clusterip # lable for the ClusterIP service
+spec:
+  selector:
+    app: nginx-pods # Which Pods should be handled by this service
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8080 # Exposed Port by ClusterIP
+    targetPort: 80 # Port in Pod which should be exposed
+    protocol: TCP
+    

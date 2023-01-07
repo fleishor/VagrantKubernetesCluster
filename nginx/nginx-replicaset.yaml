@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: nginx-replicaset
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      role: web
+  template:
+    metadata:
+      name: nginx-pod # Name of the POD
+      labels:
+        role: web
+    spec:
+      containers:
+      - name: nginx-container # Name of the container
+        image: nginx:latest # Image name and version
+        ports:
+        - containerPort: 80 # Exposed port from the container
+        volumeMounts:
+        - name: nfs-volume # Name of the volumeMount to use in the container
+          mountPath: /usr/share/nginx/html # The mountpoint inside the container
+      volumes:
+      - name: nfs-volume 
+        nfs:
+          server: nfsserver
+          path: /mnt/nfs_share # The exported directory/share at NFS server
