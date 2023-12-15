@@ -1,0 +1,45 @@
+# Set IP Adresses of Master and Worker nodes
+DESKTOP_IP      = "192.168.56.1"
+UBUNTU_IP      = "192.168.56.8"
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "generic/ubuntu2204"
+  config.vm.box_check_update = false
+  config.vm.synced_folder ".", "/vagrant"
+  config.ssh.insert_key=true
+
+  # disable vbguest additions
+  if Vagrant.has_plugin?("vagrant-vbguest")
+    config.vbguest.auto_update = true
+  end
+
+  # use proxy at host machine
+  if Vagrant.has_plugin?("vagrant-proxyconf")
+    config.apt_proxy.http = "http://192.168.178.44:3142"
+    config.apt_proxy.https = "http://192.168.178.44:3142"
+  end
+
+  # define cpu/memory of nodes
+  nodes = [
+    { :name => "ubuntu2204"  , :ip => UBUNTU_IP,   :cpus => 2, :memory => 4096, :disksize => "32GB" },
+  ]
+
+  # create virtual machine
+  nodes.each do |opts|
+    config.vm.define opts[:name] do |node|
+      node.vm.hostname = opts[:name]
+#      node.vm.network "private_network", ip: opts[:ip]
+
+      node.vm.provider "virtualbox" do |vb|
+        vb.name = opts[:name]
+        vb.cpus = opts[:cpus]
+        vb.memory = opts[:memory]
+      end
+      
+       # special provision for ubuntu
+      if node.vm.hostname == "ubuntu2204" then
+        node.vm.provision "shell", path:"./provision_ubuntu.sh"
+      end
+    end
+  end
+end

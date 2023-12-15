@@ -1,0 +1,71 @@
+# Set IP Adresses of Master and Worker nodes
+ADMIN_IP        = "192.168.56.8"
+NFSSERVER_IP    = "192.168.56.9"
+MASTER_IP       = "192.168.56.10"
+NODE_01_IP      = "192.168.56.11"
+NODE_02_IP      = "192.168.56.12"
+NODE_03_IP      = "192.168.56.13"
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "fleishor/ubuntu2204-2023-12-01"
+  config.vm.box_check_update = false
+  config.vm.synced_folder ".", "/vagrant"
+
+  # disable vbguest additions
+  if Vagrant.has_plugin?("vagrant-vbguest")
+    config.vbguest.auto_update = false 
+  end
+
+  # use proxy at host machine
+  if Vagrant.has_plugin?("vagrant-proxyconf")
+    config.apt_proxy.http = "http://desktop.fritz.box:3142"
+    config.apt_proxy.https = "DIRECT"
+  end
+
+  # define cpu/memory of nodes
+  nodes = [
+    { :name => "admin",     :ip => ADMIN_IP,     :cpus => 2, :memory => 2096, :disksize => "32GB" },
+    { :name => "nfsserver", :ip => NFSSERVER_IP, :cpus => 2, :memory => 2096, :disksize => "32GB" },
+    { :name => "master",    :ip => MASTER_IP,    :cpus => 2, :memory => 4096, :disksize => "32GB" },
+    { :name => "node-01",   :ip => NODE_01_IP,   :cpus => 2, :memory => 4096, :disksize => "32GB" },
+    { :name => "node-02",   :ip => NODE_02_IP,   :cpus => 2, :memory => 4096, :disksize => "32GB" },
+    { :name => "node-03",   :ip => NODE_03_IP,   :cpus => 2, :memory => 4096, :disksize => "32GB" },
+  ]
+
+  # create virtual machine
+  nodes.each do |opts|
+    config.vm.define opts[:name] do |node|
+      node.vm.hostname = opts[:name]
+      node.vm.network "private_network", ip: opts[:ip]
+#      node.vm.disk :disk, size: opts[:disksize], primary: true
+
+      node.vm.provider "virtualbox" do |vb|
+        vb.name = opts[:name]
+        vb.cpus = opts[:cpus]
+        vb.memory = opts[:memory]
+      end
+
+      # special provision for admin
+      if node.vm.hostname == "admin" then 
+        node.vm.provision "shell", path:"./provision_admin.sh"
+      end
+      
+      # special provision for nfsserver
+      if node.vm.hostname == "nfsserver" then 
+        node.vm.provision "shell", path:"./provision_nfsserver.sh"
+      end
+      
+      # special provision for master
+      if node.vm.hostname == "master" then 
+        node.vm.provision "shell", path:"./provision_kubernetes.sh"
+        node.vm.provision "shell", path:"./provision_master.sh"
+      end
+
+      # special provision for worker nodes
+      if node.vm.hostname =~ /node-[0-9]*/ then
+        node.vm.provision "shell", path:"./provision_kubernetes.sh"
+        node.vm.provision "shell", path:"./provision_node.sh"
+      end
+    end
+  end
+end
